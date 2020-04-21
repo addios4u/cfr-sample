@@ -4,6 +4,7 @@ import React, { useEffect, useRef, useState } from "react";
 import swal from "sweetalert";
 import Stats from "react-canvas-stats";
 import ReactGA from "react-ga";
+import { isMobile } from "react-device-detect";
 
 import { Container, CameraContainer, Camera, CameraError, Canvas } from "./ui";
 import { MenuContainer, MenuItem, StatsContainer } from "./ui";
@@ -39,16 +40,18 @@ const getDefaultType = () => {
 };
 
 const _MEMORY = window.performance && window.performance.memory;
-const _EXTRA_PANELS = [
-    {
-        name: "MB",
-        fg: "#f08",
-        bg: "#201",
-        maxValue: _MEMORY.jsHeapSizeLimit / 1048576, //you have to provide this for scale
-        updateOnType: "fps", //this feels a bit clunky, there are two update types
-        updateCallback: (val) => _MEMORY.usedJSHeapSize / 1048576, //a function to transform the value (you dont have to you can also just compute whatever you want), val input val output
-    },
-];
+const _EXTRA_PANELS = _MEMORY
+    ? [
+          {
+              name: "MB",
+              fg: "#f08",
+              bg: "#201",
+              maxValue: _MEMORY.jsHeapSizeLimit / 1048576, //you have to provide this for scale
+              updateOnType: "fps", //this feels a bit clunky, there are two update types
+              updateCallback: (val) => _MEMORY.usedJSHeapSize / 1048576, //a function to transform the value (you dont have to you can also just compute whatever you want), val input val output
+          },
+      ]
+    : null;
 
 ReactGA.pageview("/root");
 
@@ -60,35 +63,55 @@ export default (props) => {
     const [hasCamera, setHasCamera] = useState(null);
     const [type, setType] = useState(props.type || getDefaultType());
 
+    const [width, setWidth] = useState(isMobile ? null : props.width);
+    const [height, setHeight] = useState(isMobile ? null : props.height);
+
     const onTypeChanged = (t) => {
         ReactGA.event({ category: t, action: "Change View", label: t });
         setType(t);
     };
 
     const initCamera = () => {
-        navigator.getUserMedia(
-            {
-                video: {
-                    width: props.width,
-                    height: props.height,
+        try {
+            navigator.getUserMedia(
+                {
+                    video: {
+                        width: props.width,
+                        height: props.height,
+                    },
+                    audio: false,
                 },
-                audio: false,
-            },
-            (stream) => {
-                video.current.srcObject = stream;
-                video.current.play();
-                setHasCamera(true);
-            },
-            (e) => {
-                swal(e.message).then(() => {
-                    setHasCamera(false);
-                });
-            }
-        );
+                (stream) => {
+                    const track = stream.getTracks()[0];
+                    if (isMobile) {
+                        const { width, height } = track.getSettings();
+                        const { orientation } = window.screen;
+                        if (orientation.type.startsWith("portrait")) {
+                            setWidth(height);
+                            setHeight(width);
+                        } else {
+                            setWidth(width);
+                            setHeight(height);
+                        }
+                    }
+
+                    video.current.srcObject = stream;
+                    video.current.play();
+                    setHasCamera(true);
+                },
+                (e) => {
+                    swal(e.message).then(() => {
+                        setHasCamera(false);
+                    });
+                }
+            );
+        } catch (e) {
+            swal({ title: "크롬을 이용해 주세요.", text: e.message });
+        }
     };
 
     const clearCanvas = () => {
-        if (!canvas) {
+        if (!canvas || !canvas.current) {
             return;
         }
         const { width, height } = canvas.current;
@@ -122,15 +145,15 @@ export default (props) => {
                         <i className="fa fa-exclamation-triangle"></i>Not Found Camera
                     </CameraError>
                 )}
-                <Camera {...props} ref={video} />
-                <Canvas {...props} ref={canvas} style={{ display: type === "NONE" ? "none" : "block" }} />
+                <Camera {...props} ref={video} width={width} height={height} />
+                {width && height && <Canvas {...props} ref={canvas} width={width} height={height} style={{ display: type === "NONE" ? "none" : "block" }} />}
             </CameraContainer>
 
             {hasCamera && type === "FACE" && <CFRFace {...props} video={video?.current} canvas={canvas?.current} detected={onDetected} timings={TIMING} />}
             {hasCamera && type === "POSE" && <CFRPose {...props} video={video?.current} canvas={canvas?.current} detected={onDetected} timings={TIMING} />}
             {hasCamera && type === "MESH" && <CFRFaceMesh {...props} video={video?.current} canvas={canvas?.current} detected={onDetected} timings={TIMING} />}
 
-            <FPSStats ref={fps} {...props} />
+            {_MEMORY && <FPSStats ref={fps} {...props} />}
         </Container>
     );
 };
