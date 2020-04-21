@@ -53,6 +53,7 @@ const _EXTRA_PANELS = _MEMORY
       ]
     : null;
 
+ReactGA.initialize("UA-164168836-1");
 ReactGA.pageview("/root");
 
 export default (props) => {
