@@ -95,6 +95,13 @@ export const Canvas = styled.canvas.attrs((props) => {
     position: absolute;
     left: 0px;
     top: 0px;
+    width: ${(props) => getPXSizeByProps(props.width, _DEFAULT_WIDTH)};
+    height: ${(props) => getPXSizeByProps(props.height, _DEFAULT_HEIGHT)};
+
+    @media (max-width: 768px) {
+        left: 50%;
+        margin-left: -${(props) => props.width / 2}px;
+    }
 `;
 
 /* ETC */
