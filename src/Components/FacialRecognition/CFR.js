@@ -54,7 +54,7 @@ const _EXTRA_PANELS = _MEMORY
     : null;
 
 ReactGA.initialize("UA-164168836-1");
-ReactGA.pageview("/root");
+ReactGA.pageview("/sample/cfr");
 
 export default (props) => {
     const video = useRef(null);
@@ -68,7 +68,7 @@ export default (props) => {
     const [height, setHeight] = useState(isMobile ? null : props.height);
 
     const onTypeChanged = (t) => {
-        ReactGA.event({ category: t, action: "Change View", label: t });
+        ReactGA.event({ category: "CFR", action: "CRF - Change Type", label: `CFR - ${t}` });
         setType(t);
     };
 
